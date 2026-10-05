@@ -33,7 +33,7 @@ public class negativeResScript : MonoBehaviour
     private Color[] colors;
     private Vector3[] positionVectors;
     private Vector3[] shiftedPositionVectors;
-    private string axisNames = "XYZWVURSTOPQ";
+    private string axisNames = "XYZWVURSTOPQLMNIJK"; //i'm actually making nres for higher dimensions ho lee sheet
     private List<int> currentAnswer;
     private string readableConfig;
     private bool lockInput = false;
@@ -42,18 +42,33 @@ public class negativeResScript : MonoBehaviour
 
     private Vector3[] axes = new[]
     {
-        new Vector3(1f, 0f, 0f),
-        new Vector3(0f, 1f, 0f),
-        new Vector3(0f, 0f, 1f),
-        new Vector3(0.8f, 0.2f, 0.5f),
-        new Vector3(0.2f, 0.5f, 0.8f),
-        new Vector3(0.5f, 0.8f, 0.2f),
-        new Vector3(2f, 0.125f, 0.125f),
-        new Vector3(0.125f, 0.125f, 2f),
-        new Vector3(0.125f, 2f, 0.125f),
-        new Vector3(0.125f, 0.05f, 3.2f),
-        new Vector3(0.05f, 3.2f, 0.125f),
-        new Vector3(3.2f, 0.125f, 0.05f),
+        new Vector3(1f, 0f, 0f),            //X
+        new Vector3(0f, 1f, 0f),            //Y
+        new Vector3(0f, 0f, 1f),            //Z     3
+        new Vector3(0.8f, 0.2f, 0.5f),      //W
+        new Vector3(0.2f, 0.5f, 0.8f),      //V
+        new Vector3(0.5f, 0.8f, 0.2f),      //U     6
+        new Vector3(2f, 0.125f, 0.125f),    //R
+        new Vector3(0.125f, 0.125f, 2f),    //S
+        new Vector3(0.125f, 2f, 0.125f),    //T     9
+        new Vector3(0.125f, 0.05f, 3.2f),   //O
+        new Vector3(0.05f, 3.2f, 0.125f),   //P
+        new Vector3(3.2f, 0.125f, 0.05f),   //Q     12
+        new Vector3(4f, 1f, 2f),            //L
+        new Vector3(2f, 4f, 1f),            //M
+        new Vector3(1f, 2f, 4f),            //N     15
+        new Vector3(5f, 0f, 0f),            //I
+        new Vector3(0f, 5f, 0f),            //J
+        new Vector3(0f, 0f, 5f),            //K     18
+        new Vector3(4f, 1f, 2.5f),          //F
+        new Vector3(1f, 2.5f, 4f),          //G
+        new Vector3(2.5f, 4f, 1f),          //H     21
+        new Vector3(10f, 0.6f, 0.6f),       //C
+        new Vector3(0.6f, 0.6f, 10f),       //D
+        new Vector3(0.6f, 10f, 0.6f),       //E     24
+        new Vector3(0.6f, 0.25f, 16f),      //A
+        new Vector3(0.25f, 16f, 0.6f),      //B
+        new Vector3(16f, 0.6f, 0.25f),      //1     27
     };
 
     private float scalingFactor;
