@@ -259,9 +259,9 @@ public class negativeResScript : MonoBehaviour
         for (int i = 0; i < 1 << amountOfDimensions; i++)
         {
             if (i == currentAnswer.Last().First()) spheres[i].GetComponent<MeshRenderer>().material.color = Color.green;
-            else if (i == currentAnswer.Last()) spheres[i].GetComponent<MeshRenderer>().material.color = Color.red;
-            else if (currentAnswer.Contains(i)) spheres[i].GetComponent<MeshRenderer>().material.color = Color.white;
-            else if ((((i ^ currentAnswer.Last()) - 1) & (i ^ currentAnswer.Last())) == 0)
+            else if (i == currentAnswer.Last().Last()) spheres[i].GetComponent<MeshRenderer>().material.color = Color.red;
+            else if (currentAnswer.Last().Contains(i)) spheres[i].GetComponent<MeshRenderer>().material.color = Color.white;
+            else if ((((i ^ currentAnswer.Last().Last()) - 1) & (i ^ currentAnswer.Last().Last())) == 0)
             {
                 if (currentAnswer.SkipLast(1).SelectMany(x=>x).ToList().Contains(i))
                     spheres[i].GetComponent<MeshRenderer>().material.color = Color.gray / 4;
@@ -275,8 +275,24 @@ public class negativeResScript : MonoBehaviour
 
     bool checkAnswer()
     {
-        // List<int> currentAnswer - contains indices of buttons.
-        
+        // List<List<int>> currentAnswer - contains indices of buttons.
+        List<int> ans = Enumerable.Range(1, amountOfDimensions).ToList();
+        foreach(var list in currentAnswer){
+            if (list.Count == 0) continue;
+            if (list.Count < 3 || list.First() != list.Last()) return false; 
+            List<int> masks = Enumerable.Range(0,buttons.Count - 1).Select(i => buttons[i] ^ buttons[i+1]).Select(m => {
+                if (m==0) return -1;
+                int ans = 0;
+                while (m & 1 == 0) {ans++; m<<=1;}
+                return m==1?ans:-1;
+            }).ToList();
+            if (masks.Any(x=>x==-1)) return false;
+            masks = masks.Select((m,i)=>(buttons[i+1] & (1 << m))==1?m+1:-m-1);
+            for (int i=0; i<masks.Length; i++){
+                ans[Math.Abs(masks[(i+1)%masks.Length])] = masks[i];
+            }
+        }
+        return ans.All((x,i)=>x == config[i]);
     }
 
     IEnumerator solve()
@@ -303,22 +319,40 @@ public class negativeResScript : MonoBehaviour
 
     void appendAnswer(int button)
     {
-        if (!currentAnswer.Any()) currentAnswer.Add(button);
-        else if (currentAnswer.Last() == button) currentAnswer.Remove(button);
-        else if (currentAnswer.First() == button) {
-            if (checkAnswer()) StartCoroutine(solve());
-            else StartCoroutine(strike());
-            print("answer check");
-            return;
+        if (!currentAnswer.Last().Any()) {
+            if (currentAnswer.Count() > 1){
+                if (currentAnswer.SelectMany(x=>x).ToList().Contains(button)){
+                    if(currentAnswer.Select(x=>x.First()).ToList().Contains(button)){
+                        currentAnswer.RemoveAt(Enumerable.Range(0,currentAnswer.Length()).First(i => currentAnswer[i].First==button));
+                        Audio.PlaySoundAtTransform(sounds[0].name, transform);
+                        updateText();
+                    }else{
+                        if (checkAnswer()) StartCoroutine(solve());
+                        else StartCoroutine(strike());
+                        print("answer check");
+                    }
+                    return;
+                }
+            }
+            currentAnswer.Last().Add(button);
+            Audio.PlaySoundAtTransform(sounds[0].name, transform);
         }
-        else if (currentAnswer.Contains(button) || currentAnswer.Count>amountOfDimensions-1) return;
-        else if ((((button ^ currentAnswer.Last()) - 1) & (button ^ currentAnswer.Last())) != 0)
-        {
-            return;
+        else{
+            if (currentAnswer.SkipLast(1).SelectMany(x=>x).Contains(button)) return;
+            else if (currentAnswer.Last().Last() == button) currentAnswer.Last().Remove(button);
+            else if (currentAnswer.Last().First() == button) {
+                currentAnswer.Last().Add(button);
+                currentAnswer.Add(new List<int>());
+            }
+            else if (currentAnswer.Last().Contains(button) || currentAnswer.Last().Count>amountOfDimensions-1) return;
+            else if ((((button ^ currentAnswer.Last().Last()) - 1) & (button ^ currentAnswer.Last().Last())) != 0)
+            {
+                return;
+            }
+            else currentAnswer.Last().Add(button);
+            Audio.PlaySoundAtTransform(sounds[0].name, transform);
+            updateText();
         }
-        else currentAnswer.Add(button);
-        Audio.PlaySoundAtTransform(sounds[0].name, transform);
-        updateText();
     }
 
     void press(int i1)
