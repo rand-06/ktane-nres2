@@ -2,12 +2,12 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
 using KeepCoding;
 using UnityEngine;
-using KModkit;
-using Random = UnityEngine.Random;
+using static negativeResSpace.NegativeResistanceExt;
+
+
 
 public class negativeResScript : MonoBehaviour
 {
@@ -22,7 +22,7 @@ public class negativeResScript : MonoBehaviour
     public KMAudio Audio;
     public AudioClip[] sounds;
     //public AudioClip[] clips = new AudioClip[3];
-    private bool TwitchPlaysActive, TwitchShouldSolve;
+    private bool TwitchPlaysActive;
     
     static int ModuleIdCounter;
     int ModuleId;
@@ -33,15 +33,14 @@ public class negativeResScript : MonoBehaviour
     private Color[] colors;
     private Vector3[] positionVectors;
     private Vector3[] shiftedPositionVectors;
-    private string axisNames = "XYZWVURSTOPQLMNIJK"; //i'm actually making nres for higher dimensions ho lee sheet
+    private readonly string axisNames = "XYZWVURSTOPQLMNIJK"; //i'm actually making nres for higher dimensions ho lee sheet
     private List<List<int>> currentAnswer = new List<List<int>>{new List<int>()};
-    private bool lockInput = false;
+    private bool lockInput;
 
     private int amountOfDimensions;
     private int amountOfSubrotations = 1;
 
-    private Vector3[] axes = new[]
-    {
+    private readonly Vector3[] axes = {
         new Vector3(1f, 0f, 0f),            //X
         new Vector3(0f, 1f, 0f),            //Y
         new Vector3(0f, 0f, 1f),            //Z     3
@@ -81,12 +80,12 @@ public class negativeResScript : MonoBehaviour
     void initialize(){
         sphere.SetActive(false);
         secondStage = false;
-        currentAnswer = new List<int>();
+        currentAnswer = new List<List<int>>();
         config = Enumerable.Range(1, amountOfDimensions).ToList();
         generateConfig();
-        Center.text = config.Length.ToString();
+        Center.text = config.Count.ToString();
         shifts = positionsFromConfig();
-        currentPosition = Enumerable.Range(0, shifts.Length).ToArray();
+        currentPosition = Enumerable.Range(0, shifts.Count).ToList();
         shiftedPositionVectors = Enumerable.Range(0, 1<<amountOfDimensions).Select(i=>xyzFromNumber(shifts[i])).ToArray();
         for (int i = 0; i < 1 << amountOfDimensions; i++)
         {
@@ -116,13 +115,13 @@ public class negativeResScript : MonoBehaviour
         }
         yield return new  WaitForSeconds(2f);
         Module.HandleStrike();
-        Center.text = config.Length.ToString();
+        Center.text = config.Count.ToString();
         lockInput = false;
         
         
         secondStage = false;
         shifts = positionsFromConfig();
-        currentPosition = Enumerable.Range(0, shifts.Length).ToArray();
+        currentPosition = Enumerable.Range(0, shifts.Count).ToList();
         shiftedPositionVectors = Enumerable.Range(0, 1<<amountOfDimensions).Select(i=>xyzFromNumber(shifts[i])).ToArray();
         for (int i = 0; i < 1 << amountOfDimensions; i++)
         {
@@ -131,12 +130,12 @@ public class negativeResScript : MonoBehaviour
         StartCoroutine(move());
     }
     List<int> positionsFromConfig(){
-        List<int> ans = new int[1 << config.Length];
-        for (int i = 0; i < 1 << config.Length; i++)
+        List<int> ans = new List<int>(1 << amountOfDimensions);
+        for (int i = 0; i < 1 << amountOfDimensions; i++)
         {
-            for (int j = 0; j < config.Length; j++)
+            for (int j = 0; j < amountOfDimensions; j++)
             {
-                if ((config[j] < 0) ^ (((1 << j) & i)!=0)) ans[i] += 1<<(config[j]*(config[j]<0?-1:1)-1);
+                if ((config[j] < 0) ^ (((1 << j) & i)!=0)) ans[i] += 1<<(config[j]*(config[j]<0?-1:1)-1); //AOOR exception
             }
         }
         return ans;
@@ -156,7 +155,7 @@ public class negativeResScript : MonoBehaviour
                         positionVectors[currentPosition[i]],
                         shiftedPositionVectors[currentPosition[i]], time);
                 yield return new WaitForEndOfFrame();
-                time += Time.DeltaTime();
+                time += Time.deltaTime;
             }
             List<int> tmp = currentPosition.ToList();
             for (int i = 0; i < 1 << amountOfDimensions; i++) currentPosition[i] = shifts[tmp[i]];
@@ -194,8 +193,8 @@ public class negativeResScript : MonoBehaviour
                 else initialArray[UnityEngine.Random.Range(0,amountOfSubrotations)].Add(i);
             }
         } while (ignored.Count == amountOfDimensions);
-        initialArray = initialArray.Select(x => x.AsEnumerable().Shuffle().ToList()).ToList();
-        List<int> axis = Enumerable.Repeat(0, amountOfDimensions);
+        initialArray = initialArray.Select(x => x.Shuffle().ToList()).ToList();
+        List<int> axis = Enumerable.Repeat(0, amountOfDimensions).ToList();
         List<string> readableSubrotations = new List<string>();
         foreach(var i in ignored) axis[i] = i + 1;
         foreach(var list in initialArray){
@@ -207,7 +206,7 @@ public class negativeResScript : MonoBehaviour
                 List<string> readableAxes = new List<string>();
                 for (int i = 0; i<list.Count; i++){
                     axis[list[i]] = (list[(i+1)%list.Count] + 1) * UnityEngine.Random.value<.5f?-1:1;
-                    readableAxes.Add($"{axis[list[i]]<0?"-":"+"}{axisNames[list[i]].ToString()}");
+                    readableAxes.Add((axis[list[i]] < 0 ? "-" : "+") + axisNames[list[i]]);
                 }
                 readableSubrotations.Add(readableAxes.AsEnumerable().Aggregate((a,b)=>b+a));
             }
@@ -218,32 +217,32 @@ public class negativeResScript : MonoBehaviour
 
     string getStringFromButtonList(List<int> buttons){
         if (buttons.Count < 2) return "";
-        if (buttons.First()== buttons.Last()) buttons = buttons.SkipLast(1);
+        if (buttons.First()== buttons.Last()) buttons = buttons.SkipLast(1).ToList();
         List<int> masks = Enumerable.Range(0,buttons.Count - 1).Select(i => buttons[i] ^ buttons[i+1]).Select(m => {
             if (m==0) return -1;
             int ans = 0;
-            while (m & 1 == 0) {ans++; m<<=1;}
+            while ((m & 1) == 0) {ans++; m<<=1;}
             return m==1?ans:-1;
         }).ToList();
         if(masks.Any(x=>x==-1)) return "!";
-        return masks.Select((m,i) => $"{(buttons[i+1] & (1 << m))==1?"+":"-"}{axisNames[m]}").Aggregate((a,b)=>a+b);
+        return masks.Select((m,i) => ((buttons[i + 1] & (1 << m)) == 1 ? "+" : "-")+axisNames[m]).Aggregate((a,b)=>a+b);
     }
 
     void updateText(){
-        if (currentAnswer.Last.Count == 0)
+        if (currentAnswer.Last().Count == 0)
         {
             if (currentAnswer.Count == 1){
                 Center.text = "Ready.";
                 for (int i = 0; i < 1 << amountOfDimensions; i++) spheres[i].GetComponent<MeshRenderer>().material.color = Color.gray;
             }
             else{
-                Center.text = currentAnswer.SkipLast(1).Select(getStringFromButtonList).Aggregate((a,b)=>$"{a}, {b}").ToCharArray()
+                Center.text = currentAnswer.SkipLast(1).Select(getStringFromButtonList).Aggregate((a,b)=>$"{a}, {b}").ToCharArray().ToList()
                 .Chunk(10).Select(l => l.Select(c => c.ToString()).Aggregate((a,b)=> a+b)).Aggregate((a,b)=>$"{a}\n{b}");  // yeah...
                 for (int i = 0; i < 1 << amountOfDimensions; i++) spheres[i].GetComponent<MeshRenderer>().material.color = Color.gray;
-                foreach(var list in currentAnswer){
-                    for (int i=0; i<list.Count; i++){
-                        spheres[list[i]].GetComponent<MeshRenderer>().material.color = Color.blue;
-                    }
+                foreach(var list in currentAnswer)
+                {
+                    foreach (var t in list)
+                        spheres[t].GetComponent<MeshRenderer>().material.color = Color.blue;
                     spheres[list[0]].GetComponent<MeshRenderer>().material.color = Color.magenta;
                 }
             }
@@ -262,7 +261,7 @@ public class negativeResScript : MonoBehaviour
             }
             else spheres[i].GetComponent<MeshRenderer>().material.color = Color.black;
         }
-        Center.text = currentAnswer.Select(getStringFromButtonList).Aggregate((a,b)=>$"{a}, {b}").ToCharArray()
+        Center.text = currentAnswer.Select(getStringFromButtonList).Aggregate((a,b)=>$"{a}, {b}").ToCharArray().ToList()
                 .Chunk(10).Select(l => l.Select(c => c.ToString()).Aggregate((a,b)=> a+b)).Aggregate((a,b)=>$"{a}\n{b}");
     }
 
@@ -271,16 +270,16 @@ public class negativeResScript : MonoBehaviour
         foreach(var list in currentAnswer){
             if (list.Count == 0) continue;
             if (list.Count < 3 || list.First() != list.Last()) return false; 
-            List<int> masks = Enumerable.Range(0,buttons.Count - 1).Select(i => buttons[i] ^ buttons[i+1]).Select(m => {
+            List<int> masks = Enumerable.Range(0,list.Count - 1).Select(i => list[i] ^ list[i+1]).Select(m => {
                 if (m==0) return -1;
-                int ans = 0;
-                while (m & 1 == 0) {ans++; m<<=1;}
-                return m==1?ans:-1;
+                int ansi = 0;
+                while ((m & 1) == 0) {ansi++; m<<=1;}
+                return m==1?ansi:-1;
             }).ToList();
             if (masks.Any(x=>x==-1)) return false;
-            masks = masks.Select((m,i)=>(buttons[i+1] & (1 << m))==1?m+1:-m-1);
-            for (int i=0; i<masks.Length; i++){
-                ans[Math.Abs(masks[(i+1)%masks.Length])-1] = masks[i];
+            masks = masks.Select((m,i)=>(list[i+1] & (1 << m))==1?m+1:-m-1).ToList();
+            for (int i=0; i<masks.Count; i++){
+                ans[Math.Abs(masks[(i+1)%masks.Count])-1] = masks[i];
             }
         }
         return ans.All((x,i)=>x == config[i]);
@@ -312,12 +311,12 @@ public class negativeResScript : MonoBehaviour
             if (currentAnswer.Count() > 1){
                 if (currentAnswer.SelectMany(x=>x).ToList().Contains(button)){
                     if(currentAnswer.Select(x=>x.First()).ToList().Contains(button)){
-                        currentAnswer.RemoveAt(Enumerable.Range(0,currentAnswer.Length()).First(i => currentAnswer[i].First==button));
+                        currentAnswer.RemoveAt(Enumerable.Range(0,currentAnswer.Count()).First(i => currentAnswer[i].First()==button));
                         Audio.PlaySoundAtTransform(sounds[0].name, transform);
                         updateText();
-                    }else{
-                        if (checkAnswer()) StartCoroutine(solve());
-                        else StartCoroutine(strike());
+                    }else
+                    {
+                        StartCoroutine(checkAnswer() ? solve() : strike());
                         print("answer check");
                     }
                     return;
@@ -414,9 +413,7 @@ public class negativeResScript : MonoBehaviour
             {
                 if (activatedOnce) return true;
                 activatedOnce = true;
-                spheres = Enumerable.Range(0, 1 << amountOfDimensions).Select(x => Instantiate(sphere,sphereParent)).ToArray();
-                GetComponent<KMSelectable>().Children = spheres.Select(i=>i.GetComponent<KMSelectable>()).Concat(sphere.GetComponent<KMSelectable>()).ToArray();
-                GetComponent<KMSelectable>().UpdateChildrenProperly();
+                StartCoroutine(generateSpheres());
                 
                 foreach (var s in spheres) s.transform.localScale = new Vector3(scalingFactor,scalingFactor,scalingFactor) * (.2f * 80f);
                 sphere.SetActive(false);
@@ -429,21 +426,30 @@ public class negativeResScript : MonoBehaviour
        
     }
 
+    IEnumerator generateSpheres()
+    {
+        yield return null;
+        spheres = Enumerable.Range(0, 1 << amountOfDimensions).Select(x => Instantiate(sphere,sphereParent)).ToArray();
+        GetComponent<KMSelectable>().Children = spheres.Select(i=>i.GetComponent<KMSelectable>()).Concat(sphere.GetComponent<KMSelectable>()).ToArray();
+        GetComponent<KMSelectable>().UpdateChildrenProperly();
+        allSpheresLoaded = true;
+    }
+
     IEnumerator getReadyForTorture(){
         float timer = 0f;
         float final = 4f;
         while (timer < final)
         {
-            timer += Time.DeltaTime();
+            timer += Time.deltaTime;
             yield return new WaitForEndOfFrame();
-            for (int i=0; i<spheres.Count; i++)
+            for (int i=0; i<spheres.Length; i++)
             {
                 spheres[i].transform.localPosition = Vector3.Lerp(new Vector3(0.5f,0f,0.5f), positionVectors[i], timer/final);
                 spheres[i].GetComponent<MeshRenderer>().material.color = Color.Lerp(new Color(0.5f,0.5f,0.5f), colors[i], timer/final);
             }
         }
-        yield return new WaitUntil(allSpheresLoaded);
-        for (int i = 0; i < spheres.Count; i++)
+        yield return new WaitUntil(()=>allSpheresLoaded);
+        for (int i = 0; i < spheres.Length; i++)
         {
             var i1 = i;
             spheres[i1].GetComponent<KMSelectable>().OnInteract += delegate
@@ -461,10 +467,10 @@ public class negativeResScript : MonoBehaviour
         var desc = Game.Mission.Description ?? "";
         Match regexMatchCountVariants = Regex.Match(desc, @"\[Negative-Resistance\]\s(\d+)\s(\d+)");
         if (!regexMatchCountVariants.Success) return;
-        int? valueMatches = regexMatchCountVariants.Groups[1].Value.TryParseInt();
-        if (valueMatches != null) Settings.amountOfDimensions = valueMatches.Value;
-        int? valueMatches = regexMatchCountVariants.Groups[2].Value.TryParseInt();
-        if (valueMatches != null) Settings.amountOfSubrotations = valueMatches.Value;
+        int? valueMatches1 = regexMatchCountVariants.Groups[1].Value.TryParseInt();
+        if (valueMatches1 != null) Settings.amountOfDimensions = valueMatches1.Value;
+        int? valueMatches2 = regexMatchCountVariants.Groups[2].Value.TryParseInt();
+        if (valueMatches2 != null) Settings.amountOfSubrotations = valueMatches2.Value;
     }
     class NegativeResSettings
     {
@@ -513,44 +519,11 @@ public class negativeResScript : MonoBehaviour
                 while (lockInput) yield return new WaitForSeconds(.3f);
                 int x = 0;
                 for (int i = 0; i < amountOfDimensions; i++) if (point[i] == '+') x += 1 << i;
-                
-                if (!lockInput)
-                {
-                    if (!secondStage)
-                    {
-                        lockInput = true;
-                        secondStage = true;
-                        Audio.PlaySoundAtTransform(sounds[1].name, transform);
-                    }
-                    else
-                    {
-                        if (!currentAnswer.Any()) currentAnswer.Add(x);
-                        else if (currentAnswer.Last() == x) currentAnswer.Remove(x);
-                        else if (currentAnswer.First() == x) {
-                            if (checkAnswer())
-                            {
-                                yield return "solve";
-                                yield return solve();
-                            }
-                            else
-                            {
-                                yield return "strike";
-                                yield return strike();
-                            }
-                            yield break;
-                        }
-                        else if (currentAnswer.Contains(x) || currentAnswer.Count>amountOfDimensions-1) continue;
-                        else if ((((x ^ currentAnswer.Last()) - 1) & (x ^ currentAnswer.Last())) != 0)
-                        {
-                            continue;
-                        }
-                        else currentAnswer.Add(x);
-                        Audio.PlaySoundAtTransform(sounds[0].name, transform);
-                        updateText();
-                    }
-                }
-                yield return new WaitForSeconds(.5f);
+                yield return "solve";
+                yield return "strike";
+                appendAnswer(x);
             }
+            yield return new WaitForSeconds(.5f);
         }
     }
 
@@ -594,7 +567,7 @@ public class negativeResScript : MonoBehaviour
             }
             answer.Add(startingPoint);
         }
-        configCopy = Enumerable.Range(0,amountOfDimensions).Select(i=> transformNotation.Where(x=>x.Count()==1).SelectMany(x=>x).Contains(i)?-i:0).ToList();
+        //configCopy = Enumerable.Range(0,amountOfDimensions).Select(i=> transformNotation.Where(x=>x.Count()==1).SelectMany(x=>x).Contains(i)?-i:0).ToList();
         configCopy = Enumerable.Range(0,amountOfDimensions).Select(i => transformNotation.Any(x => x.Count == 1 && x[0] == -(i+1)) ? -(i+1) : 0).ToList();
         answer = addOneAxisSubtransformation(answer, configCopy);
         if (answer == null) print("Negative-Resistance encountered a case where it didn't find a solution. Report this to rand06.");
@@ -624,7 +597,7 @@ public class negativeResScript : MonoBehaviour
         while (lockInput) yield return new WaitForSeconds(0.3f);
         while (currentAnswer.Any())
         { 
-            spheres[currentAnswer.Last()].GetComponent<KMSelectable>().OnInteract();
+            spheres[currentAnswer.Last(x => x.Count>0).Last()].GetComponent<KMSelectable>().OnInteract();
             yield return new WaitForSeconds(0.5f);
         }
         foreach (var point in getAnswer())
@@ -632,7 +605,6 @@ public class negativeResScript : MonoBehaviour
             spheres[point].GetComponent<KMSelectable>().OnInteract();
             yield return new WaitForSeconds(0.5f);
         }
-        yield return new WaitUntil(() => TwitchShouldSolve);
         yield return solve();
     }
 }
