@@ -78,8 +78,7 @@ public class negativeResScript : MonoBehaviour
 
     public AudioClip we_are_fucked;
 
-    void initialize()
-    {
+    void initialize(){
         sphere.SetActive(false);
         secondStage = false;
         currentAnswer = new List<int>();
@@ -96,8 +95,7 @@ public class negativeResScript : MonoBehaviour
         StartCoroutine(move());
     }
 
-    IEnumerator strike()
-    {
+    IEnumerator strike(){
         Audio.PlaySoundAtTransform(sounds[1].name, transform);
         lockInput = true;
         Debug.LogFormat("[Negative-Resistance #{0}] You've entered {1}, which is wrong. Going back to Read state.", ModuleId, Center.text);
@@ -132,8 +130,7 @@ public class negativeResScript : MonoBehaviour
         }
         StartCoroutine(move());
     }
-    List<int> positionsFromConfig()
-    {
+    List<int> positionsFromConfig(){
         List<int> ans = new int[1 << config.Length];
         for (int i = 0; i < 1 << config.Length; i++)
         {
@@ -144,13 +141,11 @@ public class negativeResScript : MonoBehaviour
         }
         return ans;
     }
-    Vector3 xyzFromNumber(int num)
-    {
+    Vector3 xyzFromNumber(int num){
         return scalingFactor * Enumerable.Range(0, amountOfDimensions).Where(x => (num & (1 << x)) != 0)
             .Select(x => axes[x]).Concat(new Vector3(0, 0, 0)).Aggregate((a, b) => a + b);
     }
-    IEnumerator move()
-    {
+    IEnumerator move(){
         while (!secondStage)
         {
             float time = 0f;
@@ -188,8 +183,7 @@ public class negativeResScript : MonoBehaviour
         yield return null;
     }
 
-    void generateConfig()
-    {
+    void generateConfig(){
         List<List<int>> initialArray;
         List<int> ignored;
         do{
@@ -235,8 +229,7 @@ public class negativeResScript : MonoBehaviour
         return masks.Select((m,i) => $"{(buttons[i+1] & (1 << m))==1?"+":"-"}{axisNames[m]}").Aggregate((a,b)=>a+b);
     }
 
-    void updateText()
-    {
+    void updateText(){
         if (currentAnswer.Last.Count == 0)
         {
             if (currentAnswer.Count == 1){
@@ -273,9 +266,7 @@ public class negativeResScript : MonoBehaviour
                 .Chunk(10).Select(l => l.Select(c => c.ToString()).Aggregate((a,b)=> a+b)).Aggregate((a,b)=>$"{a}\n{b}");
     }
 
-    bool checkAnswer()
-    {
-        // List<List<int>> currentAnswer - contains indices of buttons.
+    bool checkAnswer(){
         List<int> ans = Enumerable.Range(1, amountOfDimensions).ToList();
         foreach(var list in currentAnswer){
             if (list.Count == 0) continue;
@@ -289,14 +280,13 @@ public class negativeResScript : MonoBehaviour
             if (masks.Any(x=>x==-1)) return false;
             masks = masks.Select((m,i)=>(buttons[i+1] & (1 << m))==1?m+1:-m-1);
             for (int i=0; i<masks.Length; i++){
-                ans[Math.Abs(masks[(i+1)%masks.Length])] = masks[i];
+                ans[Math.Abs(masks[(i+1)%masks.Length])-1] = masks[i];
             }
         }
         return ans.All((x,i)=>x == config[i]);
     }
 
-    IEnumerator solve()
-    {
+    IEnumerator solve(){
         lockInput = true;
         Audio.PlaySoundAtTransform(sounds[0].name, transform);
         Center.text = "";
@@ -317,8 +307,7 @@ public class negativeResScript : MonoBehaviour
         yield return null;
     }
 
-    void appendAnswer(int button)
-    {
+    void appendAnswer(int button){
         if (!currentAnswer.Last().Any()) {
             if (currentAnswer.Count() > 1){
                 if (currentAnswer.SelectMany(x=>x).ToList().Contains(button)){
@@ -355,8 +344,7 @@ public class negativeResScript : MonoBehaviour
         }
     }
 
-    void press(int i1)
-    {
+    void press(int i1){
         if (lockInput) return; 
         if (!secondStage)
         {
@@ -367,8 +355,7 @@ public class negativeResScript : MonoBehaviour
         else appendAnswer(i1);
     }
     
-    void Awake()
-    {
+    void Awake(){
         ModuleId = ModuleIdCounter++;
         ModuleId++;
         
@@ -442,8 +429,7 @@ public class negativeResScript : MonoBehaviour
        
     }
 
-    IEnumerator getReadyForTorture()
-    {
+    IEnumerator getReadyForTorture(){
         float timer = 0f;
         float final = 4f;
         while (timer < final)
@@ -561,18 +547,64 @@ public class negativeResScript : MonoBehaviour
 
     List<int> getAnswer()
     {
-        int start = 0;
-        for (int i = 0; i < amountOfDimensions; i++)
-            if (readableConfig.Contains("-"+axisNames[i])) start += 1 << i;
-        List<int> ans = new List<int>();
-        ans.Add(start);
-        for (int i = 0; i < readableConfig.Length / 2; i++)
-            ans.Add(ans.Last()+
-                    (readableConfig[i * 2]=='-'?-1:1)*( 1 << axisNames.IndexOf(readableConfig[i * 2+1]))
-            );
-        ans.Add(start);
-        print(ans.Select(x=>x.ToString()).Aggregate((x,y) => x+" "+y));
-        return ans;
+        //input: List<int> config.
+        List<List<int>> transformNotation = new List<List<int>>();
+        List<int> configCopy = config.Select((x,i)=>x-1==i?0:x).ToList();
+        while(configCopy.Any(x=>x!=0)){
+            transformNotation.Add(new List<int>());
+            int startIndex = Math.Abs(configCopy.First(x => x!=0))-1;
+            int currentIndex = startIndex;
+            do{
+                transformNotation.Last().Add(configCopy[currentIndex]);
+                int previousIndex = currentIndex;
+                currentIndex = Math.Abs(configCopy[currentIndex])-1;
+                configCopy[previousIndex] = 0;
+            } while(currentIndex!=startIndex);
+            transformNotation.Last().Reverse();
+        }
+        /*
+        [-2,6,-4,7,-5,-1,-3,-8]; start = 1 -> tN = [[6]], curr = 5 ->
+        [-2,0,-4,7,-5,-1,-3,-8]; tN = [[6, -1]], curr = 0 ->
+        [-2,0,-4,7,-5,0,-3,-8]; tN = [[6, -1, -2]], curr = 1.
+        [0,0,-4,7,-5,0,-3,-8]; start = 3 -> tN = [[-2,-1,6],[7]], curr = 6 ->
+        [0,0,-4,0,-5,0,-3,-8]; tN = [[-2,-1,6],[7, -3]], curr = 2 ->
+        [0,0,-4,0,-5,0,0,-8]; tN = [[-2,-1,6],[7, -3, -4]], curr = 3.
+        [0,0,0,0,-5,0,0,-8]; start = 4 -> tN = [[-2,-1,6],[-4,-3,7],[-5]], curr = 4.
+        [0,0,0,0,0,0,0,-8]; start = 7 -> tN = [[-2,-1,6],[-4,-3,7],[-5],[-8]], curr = 7.
+        [0,0,0,0,0,0,0,0] -> tN = [[-2,-1,6],[-4,-3,7],[-5],[-8]] => -Y-X+U, -W-Z+R, -V, -S.
+        */
+        int definedMask = 0;
+        List<int> answer = new List<int>();
+        foreach(var subtransform in transformNotation.OrderByDescending(x=>x.Count()).Where(x=>x.Count()>1).ToList()){
+            int startingPoint = definedMask + subtransform.Where(x=>x<0).Select(x => 1 << (-x-1)).Sum();
+            definedMask +=  ((subtransform[0]<0)?1<<(Math.Abs(subtransform[0])-1):0) + 
+                            ((subtransform[1]>0)?1<<(Math.Abs(subtransform[1])-1):0);
+            answer.Add(startingPoint);
+            foreach(var axis in subtransform){
+                answer.Add(answer.Last() ^ (1 << Math.Abs(axis)-1));
+            }
+            answer.Add(startingPoint);
+        }
+        configCopy = Enumerable.Range(0,amountOfDimensions).Select(i=> transformNotation.Where(x=>x.Count()==1).SelectMany(x=>x).Contains(i)?-i:0).ToList();
+        configCopy = Enumerable.Range(0,amountOfDimensions).Select(i => transformNotation.Any(x => x.Count == 1 && x[0] == -(i+1)) ? -(i+1) : 0).ToList();
+        answer = addOneAxisSubtransformation(answer, configCopy);
+        if (answer == null) print("Negative-Resistance encountered a case where it didn't find a solution. Report this to rand06.");
+        return answer;
+    }
+
+    List<int> addOneAxisSubtransformation(List<int> answerSoFar, List<int> config){
+        if (config.All(x=>x==0)) return answerSoFar;
+        int axisToAdd = -config.First(x => x!=0) - 1;
+        List<int> bannedVertices = answerSoFar.Union(answerSoFar.Select(x=> x ^ (1 << axisToAdd))).ToList();
+        if (bannedVertices.Count == (1 << amountOfDimensions)) return null;
+        //List<int> possibleStartValues = Enumerable.Range(0,1<<amountOfDimensions).Where(x=> (((x&(1<<axisToAdd))==0) ^ (config[axisToAdd]<0)) && (!bannedVertices.Contains(x))).ToList();
+        //foreach(var start in possibleStartValues){
+        for(int start = 0; start < (1 << amountOfDimensions); start++){
+            if ((((start&(1<<axisToAdd))==0) == (config[axisToAdd]<0)) || (bannedVertices.Contains(start))) continue;
+            List<int> answer = addOneAxisSubtransformation(answerSoFar.Concat(new List<int>{start, start ^ (1 << axisToAdd), start}).ToList(), config.Select((x,i)=>i==axisToAdd?0:x).ToList());
+            if (answer!=null) return answer;
+        }
+        return null;
     }
     
     IEnumerator TwitchHandleForcedSolve()
