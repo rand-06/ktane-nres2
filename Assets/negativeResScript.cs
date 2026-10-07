@@ -82,7 +82,7 @@ public class negativeResScript : MonoBehaviour
         sphere.SetActive(false);
         secondStage = false;
         currentAnswer = new List<int>();
-        config = Enumerable.Range(1, amountOfDimensions).ToArray();
+        config = Enumerable.Range(1, amountOfDimensions).ToList();
         generateConfig();
         Center.text = config.Length.ToString();
         shifts = positionsFromConfig();
@@ -366,9 +366,9 @@ public class negativeResScript : MonoBehaviour
         amountOfDimensions = Settings.amountOfDimensions < 3 || Settings.amountOfDimensions > axisNames.Length
             ? 6
             : Settings.amountOfDimensions;
-        
-        config = new int[amountOfDimensions];
-        
+        amountOfSubrotations = Settings.amountOfSubrotations < 1 || Settings.amountOfSubrotations > axisNames.Length
+            ? 1
+            : Settings.amountOfSubrotations;        
         scalingFactor = 1f / Enumerable.Range(0,amountOfDimensions).Select(x=>axes[x]).Aggregate((x,y) => x + y).Apply(a =>
         {
             if (a.x >= a.y && a.x >= a.z) return a.x;
@@ -459,14 +459,17 @@ public class negativeResScript : MonoBehaviour
     void TryOverrideMission()
     {
         var desc = Game.Mission.Description ?? "";
-        Match regexMatchCountVariants = Regex.Match(desc, @"\[Negative-Resistance\]\s(\d+)");
+        Match regexMatchCountVariants = Regex.Match(desc, @"\[Negative-Resistance\]\s(\d+)\s(\d+)");
         if (!regexMatchCountVariants.Success) return;
         int? valueMatches = regexMatchCountVariants.Groups[1].Value.TryParseInt();
         if (valueMatches != null) Settings.amountOfDimensions = valueMatches.Value;
+        int? valueMatches = regexMatchCountVariants.Groups[2].Value.TryParseInt();
+        if (valueMatches != null) Settings.amountOfSubrotations = valueMatches.Value;
     }
     class NegativeResSettings
     {
         public int amountOfDimensions = 6;
+        public int amountOfSubrotations = 1;
     }
     static Dictionary<string, object>[] TweaksEditorSettings = new Dictionary<string, object>[]
     {
@@ -480,6 +483,12 @@ public class negativeResScript : MonoBehaviour
                     { "Key", "amountOfDimensions" },
                     { "Text", "Dimensions" },
                     { "Description", "Practice with different amount of dimensions. Default is 6." }
+                },
+                new Dictionary<string, object>
+                {
+                    { "Key", "amountOfSubrotations" },
+                    { "Text", "Subrotations" },
+                    { "Description", "Max amount of subrotations within one rotation. Default is 1." }
                 },
             } }
         }
